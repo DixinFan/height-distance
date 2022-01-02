@@ -12,6 +12,9 @@ h, w = img.shape[:2]
 
 real_height = 0
 stable_distance = 0
+sum_height = 0
+amount_height = 0
+flag_height = True
 
 while (True):
     ret, img_left = cap_left.read()
@@ -34,10 +37,23 @@ while (True):
 
         if abs(depth-80) <= 10:
             scale_y_left = y_left / h
-            real_height = caculate_height(scale_y_left)
+            sum_height = sum_height + caculate_height(scale_y_left)
+            amount_height = amount_height + 1
+            # real_height = caculate_height(scale_y_left)
 
-        if depth > 82:
+        if depth > 90:
+            # real_height = 0
+            sum_height = 0
+            amount_height = 0
             real_height = 0
+            flag_height = True
+
+        if depth < 70 and flag_height:
+            if amount_height > 0:
+                real_height = sum_height / amount_height
+            else:
+                real_height = 170.0
+            flag_height = False
 
         if abs(stable_distance - depth) >= 20:
             stable_distance = depth
