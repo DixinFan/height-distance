@@ -29,8 +29,10 @@ def calc_depth(right_point, left_point, frame_right, frame_left, baseline=9, alp
     return zDepth
 
 def caculate_center_point(img_left, img_right, rects_left, rects_right):
-    rect_left = rects_left[0]
-    rect_right = rects_right[0]
+    # rect_left = rects_left[0]
+    # rect_right = rects_right[0]
+    rect_left = choose_largest_rect(rects_left)
+    rect_right = choose_largest_rect(rects_right)
 
     cv2.rectangle(img_left, (rect_left[0], rect_left[1]), (rect_left[2], rect_left[3]), color, 2)
     cv2.rectangle(img_right, (rect_right[0], rect_right[1]), (rect_right[2], rect_right[3]), color, 2)
@@ -44,4 +46,14 @@ def caculate_center_point(img_left, img_right, rects_left, rects_right):
     center_point_right = (x_right, y_right)
 
     return y_left, center_point_left, center_point_right
+
+def choose_largest_rect(rects):
+    rects_size = []
+    for rect in rects:
+        rects_size.append((rect[2]-rect[0]) * (rect[3]-rect[1]))
+    max_value = max(rects_size)
+    max_index = rects_size.index(max_value)
+    return rects[max_index]
+
+
 
