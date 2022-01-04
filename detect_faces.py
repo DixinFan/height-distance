@@ -1,8 +1,6 @@
 import cv2
 import numpy as np
 import tensorflow as tf
-from tensorflow import keras
-import time
 
 
 def get_face_detector(modelFile="../height-extraction/models/res10_300x300_ssd_iter_140000.caffemodel",
