@@ -39,6 +39,8 @@ def caculate_params(img_left, img_right):
     h, w = img_left.shape[:2]
     rects_left = find_faces(img_left, face_model)
     rects_right = find_faces(img_right, face_model)
+    rects_left = remove_edge_rects(w, rects_left)
+    rects_right = remove_edge_rects(w, rects_right)
     if (len(rects_left) != len(rects_right)) or (len(rects_left) == 0):
         return 0, 0
     else:
@@ -53,6 +55,14 @@ def caculate_params(img_left, img_right):
         depth = calibrate_depth(depth)
         scale_y_left = y_left / h
     return depth, scale_y_left
+
+
+def remove_edge_rects(w, rects):
+    for rect in rects:
+        scale_x = rect[0] / w
+        if abs(scale_x-0.5) > 0.25:
+            rects.remove(rect)
+    return rects
 
 
 def draw_rect(img, rect):

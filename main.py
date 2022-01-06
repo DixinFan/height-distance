@@ -3,14 +3,15 @@ from calibrate_parameters import *
 
 color = (0, 255, 0)
 font = cv2.FONT_HERSHEY_SIMPLEX
-cap_left = cv2.VideoCapture(0)
-cap_right = cv2.VideoCapture(2)
+cap_left = cv2.VideoCapture(2)
+cap_right = cv2.VideoCapture(0)
 
 height = 0
 distance = 0
 
 count_height = 0
 sum_height = 0
+
 
 while True:
     ret, img_left = cap_left.read()
