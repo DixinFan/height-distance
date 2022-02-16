@@ -3,10 +3,3 @@ def calibrate_depth(depth):
     bias = -49.338457552465684
     depth = slope * depth + bias
     return depth
-
-def calibrate_height(scale_y_left):
-    slope = -80.0513698630137
-    bias = 210.5593607305936
-    bias = bias + 2
-    height = slope * scale_y_left + bias
-    return height
