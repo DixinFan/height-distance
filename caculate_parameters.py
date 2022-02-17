@@ -50,6 +50,10 @@ def draw_face_rect(img, rect):
 
 def caculate_params(img_left, img_right):
     h, w = img_left.shape[:2]
+    # print('h')
+    # print(h)
+    # print('w')
+    # print(w)
 
     rects_left = find_faces(img_left, face_model)
     rects_right = find_faces(img_right, face_model)
@@ -64,6 +68,8 @@ def caculate_params(img_left, img_right):
         return 0, 0
     else:
         rect_left, area_left = choose_largest_rect(rects_left)
+        # print("left start")
+        # print(area_left)
         rect_right, area_right = choose_largest_rect(rects_right)
 
         draw_face_rect(img_left, rect_left)
@@ -72,6 +78,7 @@ def caculate_params(img_left, img_right):
         x_left = caculate_rect_x_center(rect_left)
         x_right = caculate_rect_x_center(rect_right)
         y_left = caculate_rect_y_center(rect_left)
+        # print(y_left)
 
         depth = caculate_depth(w, x_left*w, x_right*w)
         depth = calibrate_depth(depth)
