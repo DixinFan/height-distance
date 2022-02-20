@@ -1,38 +1,164 @@
-from caculate_parameters import *
+from detect_faces import *
+
+color = (0, 255, 0)
+font = cv2.FONT_HERSHEY_SIMPLEX
+face_model = get_face_detector()
+cap = cv2.VideoCapture(0)
+x_threshold = 0.2
+y_threshold = 0.1
+distance_max = 100
+distance_min = 60
+height_amount = 30
+
+
+def scalize_rects(h, w, rects):
+    for rect in rects:
+        rect[0], rect[1], rect[2], rect[3] = rect[0] / w, rect[1] / h, rect[2] / w, rect[3] / h
+    return rects
+
+
+def remove_edge_rect(rects):
+    for rect in rects:
+        x_start, y_start, x_end, y_end = rect[0], rect[1], rect[2], rect[3]
+        if x_start - x_threshold < 0 or x_end + x_threshold > 1 or y_start - y_threshold < 0 or y_end + y_threshold > 1:
+            rects.remove(rect)
+    return rects
+
+
+def draw_face_rect(img, rect):
+    h, w = img.shape[:2]
+    x_start, y_start, x_end, y_end = rect[0]*w, rect[1]*h, rect[2]*w, rect[3]*h
+    x_start, y_start, x_end, y_end = int(x_start), int(y_start), int(x_end), int(y_end)
+    cv2.rectangle(img, (x_start, y_start), (x_end, y_end), color, 2)
+
+
+def z_score_normalize(data, dim):
+    mean, std = 0, 0
+    if dim == 'x':
+        mean = 0.03204
+        std = 0.02154
+    if dim == 'y':
+        mean = 0.5243
+        std = 0.09587
+    data = (data - mean) / std
+    return data
+
+
+def predict_height(x, y):
+    p00 = 169.3
+    p10 = -2.179
+    p01 = -7.568
+    p20 = 0.6889
+    p11 = 3.067
+    p02 = 0.8354
+    p21 = -0.9831
+    p12 = -0.1675
+    p03 = 0.3497
+    height = p00 + p10 * x + p01 * y + p20 * x ** 2 + p11 * x * y + p02 * y ** 2 + p21 * x ** 2 * y + p12 * x * y ** 2 + p03 * y ** 3
+    height += 2
+    return height
+
+
+def predict_distance(x, y):
+    p00 = 77.78
+    p10 = -41.44
+    p01 = -3.152
+    p20 = 13
+    p11 = -2.548
+    p02 = 0.6713
+    p21 = 2.064
+    p12 = 2.213
+    p03 = 2.284
+    distance = p00 + p10 * x + p01 * y + p20 * x ** 2 + p11 * x * y + p02 * y ** 2 + p21 * x ** 2 * y + p12 * x * y ** 2 + p03 * y ** 3
+    return distance
+
+
+def draw_parameters(img, s):
+    cv2.putText(img, s, (50, 50), font, 1.2, color, 3)
+
+
+def choose_largest_rect(rects):
+    rects_area = []
+    for rect in rects:
+        rects_area.append((rect[2] - rect[0]) * (rect[3] - rect[1]))
+    max_value = max(rects_area)
+    max_index = rects_area.index(max_value)
+    return rects[max_index], max_value
+
+
+def caculate_rect_y_center(rect):
+    return rect[1] + (rect[3] - rect[1]) / 2
+
+
+def undistort(frame):
+    fx = 519.001212946671
+    cx = 313.102107496223
+    fy = 518.130506806157
+    cy = 253.915619442965
+    k1, k2, p1, p2, k3 = 0.0314412066449391, -0.0540760680743840, 0.0, 0.0, 0.0
+    # 相机坐标系到像素坐标系的转换矩阵
+    k = np.array([
+        [fx, 0, cx],
+        [0, fy, cy],
+        [0, 0, 1]
+    ])
+    # 畸变系数
+    d = np.array([
+        k1, k2, p1, p2, k3
+    ])
+    h, w = frame.shape[:2]
+    mapx, mapy = cv2.initUndistortRectifyMap(k, d, None, k, (w, h), 5)
+    return cv2.remap(frame, mapx, mapy, cv2.INTER_LINEAR)
+
 
 if __name__ == "__main__":
-
-    color = (0, 255, 0)
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    cap_left = cv2.VideoCapture(0)
-    cap_right = cv2.VideoCapture(1)
-
-    # cap_left.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-    # cap_left.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-    # cap_left.set(4, 1080)
-
-    # cap_left.set(3, 1920)
-    # cap_left.set(4, 1080)
-    #
-    # cap_right.set(3, 1920)
-    # cap_right.set(4, 1080)
-
+    stable_height = 0
+    height_list = []
 
     while True:
-        ret, img_left = cap_left.read()
-        ret, img_right = cap_right.read()
+        ret, img = cap.read()
+        img = undistort(img)
+        h, w = img.shape[:2]
+        rects = find_faces(img, face_model)
+        rects = scalize_rects(h, w, rects)
+        rects = remove_edge_rect(rects)
 
-        distance, scale_y_left = caculate_params(img_left, img_right)
-        distance, height = caculate_height(distance, scale_y_left)
+        if len(rects) > 0:
+            rect, area = choose_largest_rect(rects)
+            y_left = caculate_rect_y_center(rect)
+            x = z_score_normalize(area, 'x')
+            y = z_score_normalize(y_left, 'y')
+            distance = predict_distance(x, y)
 
-        cv2.putText(img_left, "height: " + str(height), (50, 50), font, 1.2, color, 3)
-        cv2.putText(img_right, "distance: " + str(distance), (50, 50), font, 1.2, color, 3)
-        cv2.imshow("img_left", img_left)
-        cv2.imshow("img_right", img_right)
+            if distance_max > distance > distance_min:
 
+                if stable_height == 0:
+                    height = predict_height(x, y)
+                    height_list.append(height)
+                    if len(height_list) == height_amount:
+                        height_list.sort()
+                        height_list = height_list[int(height_amount/3): int(height_amount/3)*2]
+                        stable_height = sum(height_list) / len(height_list)
+
+                distance = str(round(distance, 1))
+                screen_height = str(round(stable_height, 1))
+                s = 'distance: ' + distance + '; height: ' + screen_height
+                draw_parameters(img, s)
+                draw_face_rect(img, rect)
+            else:
+                stable_height = 0
+                height_list = []
+
+        else:
+            stable_height = 0
+            height_list = []
+
+        cv2.imshow('img', img)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-
-    cap_left.release()
-    cap_right.release()
+    cap.release()
     cv2.destroyAllWindows()
+
+
+
+
